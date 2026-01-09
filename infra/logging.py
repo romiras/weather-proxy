@@ -13,6 +13,14 @@ class JsonFormatter(logging.Formatter):
         }
         if record.exc_info:
             log_record["exception"] = self.formatException(record.exc_info)
+
+        # Inject Request ID if available
+        from infra.request_context import request_id_ctx_var
+
+        req_id = request_id_ctx_var.get()
+        if req_id:
+            log_record["request_id"] = req_id
+
         return json.dumps(log_record)
 
 

@@ -130,6 +130,8 @@ For more details, see **[scripts/Verification.md](scripts/Verification.md)**.
 
 ## 🔄 CI/CD
 
+> ⚠️ **IMPORTANT**: Always run `ruff check .` and `ruff format .` before committing changes!
+
 Automated quality gates run on every push:
 - **Linting**: Ruff enforces code style and quality
 - **Testing**: Pytest with 37 unit and integration tests (96% coverage)
