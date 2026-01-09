@@ -53,6 +53,17 @@ def mock_async_client():
     mock_client = MagicMock()
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    # helper to create response mocks with serializable attributes
+    def create_mock_response(json_data, status_code=200):
+        resp = MagicMock()
+        resp.json.return_value = json_data
+        resp.status_code = status_code
+        resp.url = "http://test.url"
+        resp.raise_for_status = MagicMock()
+        return resp
+
+    mock_client.create_mock_response = create_mock_response
     return mock_client
 
 
@@ -60,14 +71,10 @@ def mock_async_client():
 async def test_get_weather_success(mock_geo_response, mock_weather_response, mock_async_client):
     """Test successful weather fetch from OpenMeteo."""
     # Mock geocoding response
-    geo_resp = MagicMock()
-    geo_resp.json.return_value = mock_geo_response
-    geo_resp.raise_for_status = MagicMock()
+    geo_resp = mock_async_client.create_mock_response(mock_geo_response)
 
     # Mock weather response
-    weather_resp = MagicMock()
-    weather_resp.json.return_value = mock_weather_response
-    weather_resp.raise_for_status = MagicMock()
+    weather_resp = mock_async_client.create_mock_response(mock_weather_response)
 
     # Configure mock client to return appropriate responses
     mock_async_client.get = AsyncMock(side_effect=[geo_resp, weather_resp])
@@ -89,9 +96,7 @@ async def test_get_weather_success(mock_geo_response, mock_weather_response, moc
 async def test_get_weather_city_not_found(mock_async_client):
     """Test handling of city not found in geocoding."""
     # Mock empty geocoding response
-    geo_resp = MagicMock()
-    geo_resp.json.return_value = {"results": []}  # Empty results
-    geo_resp.raise_for_status = MagicMock()
+    geo_resp = mock_async_client.create_mock_response({"results": []})
 
     mock_async_client.get = AsyncMock(return_value=geo_resp)
 
@@ -108,9 +113,7 @@ async def test_get_weather_city_not_found(mock_async_client):
 async def test_get_weather_missing_results_key(mock_async_client):
     """Test handling of malformed geocoding response."""
     # Mock response without 'results' key
-    geo_resp = MagicMock()
-    geo_resp.json.return_value = {}
-    geo_resp.raise_for_status = MagicMock()
+    geo_resp = mock_async_client.create_mock_response({})
 
     mock_async_client.get = AsyncMock(return_value=geo_resp)
 
@@ -125,9 +128,9 @@ async def test_get_weather_missing_results_key(mock_async_client):
 async def test_get_weather_geocoding_http_error(mock_async_client):
     """Test handling of HTTP error during geocoding."""
     # Mock HTTP error response
-    geo_resp = MagicMock()
+    geo_resp = mock_async_client.create_mock_response({}, status_code=500)
     geo_resp.raise_for_status.side_effect = httpx.HTTPStatusError(
-        "500 Server Error", request=MagicMock(), response=MagicMock()
+        "500 Server Error", request=MagicMock(), response=geo_resp
     )
 
     mock_async_client.get = AsyncMock(return_value=geo_resp)
@@ -143,14 +146,12 @@ async def test_get_weather_geocoding_http_error(mock_async_client):
 async def test_get_weather_api_http_error(mock_geo_response, mock_async_client):
     """Test handling of HTTP error during weather fetch."""
     # Mock successful geocoding
-    geo_resp = MagicMock()
-    geo_resp.json.return_value = mock_geo_response
-    geo_resp.raise_for_status = MagicMock()
+    geo_resp = mock_async_client.create_mock_response(mock_geo_response)
 
     # Mock weather API error
-    weather_resp = MagicMock()
+    weather_resp = mock_async_client.create_mock_response({}, status_code=503)
     weather_resp.raise_for_status.side_effect = httpx.HTTPStatusError(
-        "503 Service Unavailable", request=MagicMock(), response=MagicMock()
+        "503 Service Unavailable", request=MagicMock(), response=weather_resp
     )
 
     mock_async_client.get = AsyncMock(side_effect=[geo_resp, weather_resp])
@@ -180,23 +181,21 @@ async def test_get_weather_circuit_breaker_open():
 async def test_get_weather_with_minimal_forecast(mock_geo_response, mock_async_client):
     """Test handling of weather response with fewer than 5 forecast hours."""
     # Mock geocoding response
-    geo_resp = MagicMock()
-    geo_resp.json.return_value = mock_geo_response
-    geo_resp.raise_for_status = MagicMock()
+    geo_resp = mock_async_client.create_mock_response(mock_geo_response)
 
     # Mock weather response with only 2 hours
-    weather_resp = MagicMock()
-    weather_resp.json.return_value = {
-        "current": {
-            "temperature_2m": 20.0,
-            "relative_humidity_2m": 70,
-        },
-        "hourly": {
-            "time": ["2026-01-09T12:00", "2026-01-09T13:00"],
-            "temperature_2m": [20.0, 20.5],
-        },
-    }
-    weather_resp.raise_for_status = MagicMock()
+    weather_resp = mock_async_client.create_mock_response(
+        {
+            "current": {
+                "temperature_2m": 20.0,
+                "relative_humidity_2m": 70,
+            },
+            "hourly": {
+                "time": ["2026-01-09T12:00", "2026-01-09T13:00"],
+                "temperature_2m": [20.0, 20.5],
+            },
+        }
+    )
 
     mock_async_client.get = AsyncMock(side_effect=[geo_resp, weather_resp])
 
@@ -211,20 +210,18 @@ async def test_get_weather_with_minimal_forecast(mock_geo_response, mock_async_c
 async def test_get_weather_with_no_forecast(mock_geo_response, mock_async_client):
     """Test handling of weather response without forecast data."""
     # Mock geocoding response
-    geo_resp = MagicMock()
-    geo_resp.json.return_value = mock_geo_response
-    geo_resp.raise_for_status = MagicMock()
+    geo_resp = mock_async_client.create_mock_response(mock_geo_response)
 
     # Mock weather response without hourly data
-    weather_resp = MagicMock()
-    weather_resp.json.return_value = {
-        "current": {
-            "temperature_2m": 18.0,
-            "relative_humidity_2m": 55,
-        },
-        "hourly": {},  # Empty hourly
-    }
-    weather_resp.raise_for_status = MagicMock()
+    weather_resp = mock_async_client.create_mock_response(
+        {
+            "current": {
+                "temperature_2m": 18.0,
+                "relative_humidity_2m": 55,
+            },
+            "hourly": {},  # Empty hourly
+        }
+    )
 
     mock_async_client.get = AsyncMock(side_effect=[geo_resp, weather_resp])
 
@@ -239,20 +236,18 @@ async def test_get_weather_with_no_forecast(mock_geo_response, mock_async_client
 async def test_get_weather_with_missing_current_data(mock_geo_response, mock_async_client):
     """Test handling of weather response with missing current data."""
     # Mock geocoding response
-    geo_resp = MagicMock()
-    geo_resp.json.return_value = mock_geo_response
-    geo_resp.raise_for_status = MagicMock()
+    geo_resp = mock_async_client.create_mock_response(mock_geo_response)
 
     # Mock weather response with missing current fields
-    weather_resp = MagicMock()
-    weather_resp.json.return_value = {
-        "current": {},  # Missing temperature and humidity
-        "hourly": {
-            "time": ["2026-01-09T12:00"],
-            "temperature_2m": [15.0],
-        },
-    }
-    weather_resp.raise_for_status = MagicMock()
+    weather_resp = mock_async_client.create_mock_response(
+        {
+            "current": {},  # Missing temperature and humidity
+            "hourly": {
+                "time": ["2026-01-09T12:00"],
+                "temperature_2m": [15.0],
+            },
+        }
+    )
 
     mock_async_client.get = AsyncMock(side_effect=[geo_resp, weather_resp])
 
@@ -268,25 +263,25 @@ async def test_get_weather_with_missing_current_data(mock_geo_response, mock_asy
 @pytest.mark.asyncio
 async def test_geocoding_api_parameters(mock_async_client):
     """Test that geocoding API is called with correct parameters."""
-    geo_resp = MagicMock()
-    geo_resp.json.return_value = {
-        "results": [
-            {
-                "name": "Paris",
-                "latitude": 48.8566,
-                "longitude": 2.3522,
-                "timezone": "Europe/Paris",
-            }
-        ]
-    }
-    geo_resp.raise_for_status = MagicMock()
+    geo_resp = mock_async_client.create_mock_response(
+        {
+            "results": [
+                {
+                    "name": "Paris",
+                    "latitude": 48.8566,
+                    "longitude": 2.3522,
+                    "timezone": "Europe/Paris",
+                }
+            ]
+        }
+    )
 
-    weather_resp = MagicMock()
-    weather_resp.json.return_value = {
-        "current": {"temperature_2m": 10.0, "relative_humidity_2m": 80},
-        "hourly": {"time": [], "temperature_2m": []},
-    }
-    weather_resp.raise_for_status = MagicMock()
+    weather_resp = mock_async_client.create_mock_response(
+        {
+            "current": {"temperature_2m": 10.0, "relative_humidity_2m": 80},
+            "hourly": {"time": [], "temperature_2m": []},
+        }
+    )
 
     mock_async_client.get = AsyncMock(side_effect=[geo_resp, weather_resp])
 
@@ -307,16 +302,14 @@ async def test_geocoding_api_parameters(mock_async_client):
 @pytest.mark.asyncio
 async def test_weather_api_parameters(mock_geo_response, mock_async_client):
     """Test that weather API is called with correct parameters."""
-    geo_resp = MagicMock()
-    geo_resp.json.return_value = mock_geo_response
-    geo_resp.raise_for_status = MagicMock()
+    geo_resp = mock_async_client.create_mock_response(mock_geo_response)
 
-    weather_resp = MagicMock()
-    weather_resp.json.return_value = {
-        "current": {"temperature_2m": 15.0, "relative_humidity_2m": 60},
-        "hourly": {"time": [], "temperature_2m": []},
-    }
-    weather_resp.raise_for_status = MagicMock()
+    weather_resp = mock_async_client.create_mock_response(
+        {
+            "current": {"temperature_2m": 15.0, "relative_humidity_2m": 60},
+            "hourly": {"time": [], "temperature_2m": []},
+        }
+    )
 
     mock_async_client.get = AsyncMock(side_effect=[geo_resp, weather_resp])
 
