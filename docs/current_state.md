@@ -1,4 +1,4 @@
-# Project State Report: Milestone 1b (Complete)
+# Project State Report: Milestone 1c (Complete)
 
 **Date**: 2026-01-09
 
@@ -7,7 +7,7 @@ For a technical handoff to the next session, see **[docs/handoff.md](handoff.md)
 Detailed architecture is in **[docs/architecture.md](architecture.md)**.
 
 ## Overview
-We have completed **Milestone 1b**. The Weather Proxy now includes a high-performance caching layer using Redis, coordinated by a central service layer. This ensures reduced latency and minimized upstream API calls.
+We have completed **Milestone 1c**. The Weather Proxy now includes a high-performance caching layer using Redis AND a Resilience layer (Circuit Breaker) to handle downstream failures gracefully.
 
 ## ✅ Completed Components
 
@@ -17,7 +17,7 @@ We have completed **Milestone 1b**. The Weather Proxy now includes a high-perfor
     - `WeatherProviderPort`: External API contract.
     - `CachePort`: Persistence contract for weather data.
 - **Services**: `WeatherService` (Orchestrates Provder + Cache logic).
-- **Exceptions**: `CityNotFound`.
+- **Exceptions**: `CityNotFound`, `ServiceUnavailable`.
 
 ### 2. Infrastructure Layer (`infra/`)
 - **Adapters**:
@@ -55,7 +55,6 @@ graph TD
     OM --> External[Open-Meteo API]
 ```
 
-## Next Steps (Milestone 2/3)
+## Next Steps (Milestone 2)
 Focus will likely shift to:
-- **Resilience**: Circuit Breaker pattern (e.g., handling Redis or Open-Meteo downtime).
 - **Security/Scalability**: Rate Limiting per Request ID or IP.

@@ -2,6 +2,7 @@ import json
 import logging
 from typing import Optional
 import redis.asyncio as redis
+from circuitbreaker import circuit, CircuitBreakerError
 from core.domain.ports import CachePort
 from core.domain.models import WeatherEntity
 from dataclasses import asdict
@@ -13,26 +14,39 @@ class RedisCacheAdapter(CachePort):
         self.redis = redis.from_url(redis_url, decode_responses=True)
         self.ttl = 3600  # 1 hour
 
-    async def get_weather(self, city_name: str) -> Optional[WeatherEntity]:
+    @circuit(failure_threshold=3, recovery_timeout=30)
+    async def _get_weather_impl(self, city_name: str) -> Optional[WeatherEntity]:
         key = f"weather:{city_name.lower()}"
-        try:
-            data = await self.redis.get(key)
-            if data:
-                logger.info(f"Cache HIT for {city_name}")
-                json_data = json.loads(data)
-                return WeatherEntity(**json_data)
-        except Exception as e:
-            logger.warning(f"Cache READ error: {e}")
-        
+        data = await self.redis.get(key)
+        if data:
+            logger.info(f"Cache HIT for {city_name}")
+            json_data = json.loads(data)
+            return WeatherEntity(**json_data)
         logger.info(f"Cache MISS for {city_name}")
         return None
 
-    async def set_weather(self, city_name: str, weather: WeatherEntity):
-        key = f"weather:{city_name.lower()}"
+    async def get_weather(self, city_name: str) -> Optional[WeatherEntity]:
         try:
-            # We use asdict to serialize the dataclass
-            data = json.dumps(asdict(weather))
-            await self.redis.set(key, data, ex=self.ttl)
-            logger.debug(f"Cache SET for {city_name}")
+            return await self._get_weather_impl(city_name)
+        except CircuitBreakerError:
+            logger.warning(f"Cache Circuit Breaker OPEN for {city_name}. Treating as MISS.")
+            return None
+        except Exception as e:
+            logger.warning(f"Cache READ error: {e}")
+            return None
+
+    @circuit(failure_threshold=3, recovery_timeout=30)
+    async def _set_weather_impl(self, city_name: str, weather: WeatherEntity):
+        key = f"weather:{city_name.lower()}"
+        # We use asdict to serialize the dataclass
+        data = json.dumps(asdict(weather))
+        await self.redis.set(key, data, ex=self.ttl)
+        logger.debug(f"Cache SET for {city_name}")
+
+    async def set_weather(self, city_name: str, weather: WeatherEntity):
+        try:
+            await self._set_weather_impl(city_name, weather)
+        except CircuitBreakerError:
+            logger.warning(f"Cache Circuit Breaker OPEN for {city_name}. skipping write.")
         except Exception as e:
             logger.warning(f"Cache WRITE error: {e}")

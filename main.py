@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from contextlib import asynccontextmanager
 from core.domain.ports import WeatherProviderPort
-from core.domain.exceptions import CityNotFound
+from core.domain.exceptions import CityNotFound, ServiceUnavailable
 from core.services import WeatherService
 from infra.open_meteo import OpenMeteoProvider
 from infra.cache import RedisCacheAdapter
@@ -64,6 +64,9 @@ async def get_weather(city: str = Query(..., min_length=1)):
             
     except CityNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except ServiceUnavailable as e:
+        logger.error(f"Service Unavailable: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         logger.error(f"Internal Error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")

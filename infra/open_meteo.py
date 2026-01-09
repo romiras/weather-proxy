@@ -1,7 +1,8 @@
 import httpx
+from circuitbreaker import circuit, CircuitBreakerError
 from core.domain.ports import WeatherProviderPort
 from core.domain.models import WeatherEntity
-from core.domain.exceptions import CityNotFound
+from core.domain.exceptions import CityNotFound, ServiceUnavailable
 import logging
 
 logger = logging.getLogger(__name__)
@@ -11,7 +12,8 @@ class OpenMeteoProvider(WeatherProviderPort):
         self.geo_base_url = "https://geocoding-api.open-meteo.com/v1/search"
         self.weather_base_url = "https://api.open-meteo.com/v1/forecast"
 
-    async def get_weather(self, city_name: str) -> WeatherEntity:
+    @circuit(failure_threshold=5, recovery_timeout=60)
+    async def _get_weather_impl(self, city_name: str) -> WeatherEntity:
         async with httpx.AsyncClient() as client:
             # 1. Geocoding
             geo_params = {
@@ -71,3 +73,10 @@ class OpenMeteoProvider(WeatherProviderPort):
                 humidity=current.get("relative_humidity_2m", 0.0),
                 forecast=forecast_list
             )
+
+    async def get_weather(self, city_name: str) -> WeatherEntity:
+        try:
+            return await self._get_weather_impl(city_name)
+        except CircuitBreakerError:
+            logger.error(f"Circuit Breaker OPEN for Provider. Service Unavailable.")
+            raise ServiceUnavailable("Weather Provider")
