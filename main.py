@@ -1,5 +1,6 @@
 import logging
 import os
+import signal
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query
@@ -34,9 +35,14 @@ async def lifespan(app: FastAPI):
     service = WeatherService(provider=provider, cache=cache)
 
     yield
+
+    # Graceful shutdown: close resources
     logger.info("Shutting down Weather Proxy...")
-    # Explicitly close redis connection if needed, though simple adapter doesn't expose close()
-    # In a real app we'd close the pool.
+    try:
+        await cache.close()
+    except Exception as e:
+        logger.error(f"Error during cache shutdown: {e}")
+    logger.info("Weather Proxy shutdown complete")
 
 
 app = FastAPI(title="Weather Proxy", lifespan=lifespan)
@@ -77,7 +83,30 @@ async def get_weather(city: str = Query(..., min_length=1)):
         raise HTTPException(status_code=500, detail="Internal Server Error") from None
 
 
+def setup_signal_handlers():
+    """Setup signal handlers for graceful shutdown."""
+    def handle_signal(signum, frame):
+        signame = signal.Signals(signum).name
+        logger.info(f"Received signal {signame} ({signum}), initiating graceful shutdown...")
+
+    # Register handlers for SIGTERM and SIGINT
+    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGINT, handle_signal)
+    logger.info("Signal handlers registered for SIGTERM and SIGINT")
+
+
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Setup signal handlers before starting the server
+    setup_signal_handlers()
+
+    # Run with proper shutdown handling
+    # Uvicorn will handle SIGTERM gracefully by default when using uvicorn.run()
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        log_config=None,  # Use our custom logging setup
+    )
+

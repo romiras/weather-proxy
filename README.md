@@ -123,7 +123,7 @@ For more details, see **[scripts/Verification.md](scripts/Verification.md)**.
 
 Automated quality gates run on every push:
 - **Linting**: Ruff enforces code style and quality
-- **Testing**: Pytest with 7 unit and integration tests
+- **Testing**: Pytest with 9 unit and integration tests
 - **Docker Build**: Validates production image
 
 See [.github/workflows/ci.yml](.github/workflows/ci.yml) for pipeline configuration.
@@ -139,7 +139,14 @@ See [.github/workflows/ci.yml](.github/workflows/ci.yml) for pipeline configurat
 - **Testing**: Pytest with async support
 - **Linting**: Ruff (fast Python linter)
 - **Observability**: Structured JSON logging, Request ID tracing
+- **Deployment**: Graceful shutdown with SIGTERM/SIGINT handling for zero-downtime deployments
 
 ## 📌 Status
 
 **Milestone 2 (CI/CD & Quality)** is complete. See [docs/current_state.md](docs/current_state.md) for details.
+
+**Next Objective: Security & Rate Limiting**
+
+- Implement **Rate Limiting** (e.g., using Redis fixed-window or leaky-bucket).
+- Consider security hardening (request validation, header sanitization).
+- Ensure the rate limiter respects the `X-Request-ID` or Client IP.

@@ -52,3 +52,11 @@ class RedisCacheAdapter(CachePort):
             logger.warning(f"Cache Circuit Breaker OPEN for {city_name}. skipping write.")
         except Exception as e:
             logger.warning(f"Cache WRITE error: {e}")
+
+    async def close(self):
+        """Close Redis connection pool gracefully."""
+        try:
+            await self.redis.aclose()
+            logger.info("Redis connection closed successfully")
+        except Exception as e:
+            logger.warning(f"Error closing Redis connection: {e}")
