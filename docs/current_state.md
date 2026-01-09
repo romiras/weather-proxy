@@ -1,4 +1,4 @@
-# Project State Report: Milestone 1c (Complete)
+# Project State Report: Milestone 2 (Complete)
 
 **Date**: 2026-01-09
 
@@ -7,7 +7,7 @@ For a technical handoff to the next session, see **[docs/handoff.md](handoff.md)
 Detailed architecture is in **[docs/architecture.md](architecture.md)**.
 
 ## Overview
-We have completed **Milestone 1c**. The Weather Proxy now includes a high-performance caching layer using Redis AND a Resilience layer (Circuit Breaker) to handle downstream failures gracefully.
+We have completed **Milestone 2 (CI/CD & Quality)**. The Weather Proxy now includes automated quality assurance with linting, testing, and Docker builds running on every push.
 
 ## ✅ Completed Components
 
@@ -16,12 +16,12 @@ We have completed **Milestone 1c**. The Weather Proxy now includes a high-perfor
 - **Ports**: 
     - `WeatherProviderPort`: External API contract.
     - `CachePort`: Persistence contract for weather data.
-- **Services**: `WeatherService` (Orchestrates Provder + Cache logic).
+- **Services**: `WeatherService` (Orchestrates Provider + Cache logic).
 - **Exceptions**: `CityNotFound`, `ServiceUnavailable`.
 
 ### 2. Infrastructure Layer (`infra/`)
 - **Adapters**:
-    - `OpenMeteoProvider`: Async `httpx` client for geocoding and forecasts.
+    - `OpenMeteoProvider`: Async `httpx` client with Circuit Breaker for resilience.
     - `RedisCacheAdapter`: Async Redis implementation for high-speed caching (1h TTL).
 
 ### 3. API Layer (`api/`)
@@ -30,16 +30,22 @@ We have completed **Milestone 1c**. The Weather Proxy now includes a high-perfor
     - `GET /health`: System health.
 - **Middleware**: Observability via `X-Request-ID` and structured JSON logging.
 
-### 4. Verification (`scripts/`)
-- `scripts/verify_adapter.py`: Provider logic verification.
-- `scripts/verify_caching.py`: Performance and consistency verification (~400x speedup).
-- `scripts/verify_middleware.py`: API stack and observability headers.
+### 4. Testing (`tests/`)
+- **Unit Tests**: `test_core.py` - Cache-aside pattern validation.
+- **Integration Tests**: `test_api.py` - API endpoints and error handling.
+- **Coverage**: 7 tests covering core business logic and error scenarios.
 
-### 5. Deployment
-- **Docker**: Ready for containerization.
-- **Dependencies**: `redis`, `httpx`, `fastapi`, `termcolor` (dev). Managed via `uv`.
+### 5. CI/CD (`.github/workflows/`)
+- **Linting**: Ruff configured for code quality (`.ruff.toml`).
+- **Testing**: Pytest with async support.
+- **Docker Build**: Automated image builds on CI.
+- **Quality Gates**: Pipeline runs on push/PR to `main` and `develop`.
 
-## Architecture Diagram (Final M1b)
+### 6. Deployment
+- **Docker**: Multi-stage build for optimized production images.
+- **Dependencies**: Managed via `uv` with separate dev-dependencies.
+
+## Architecture Diagram
 
 ```mermaid
 graph TD
@@ -53,8 +59,12 @@ graph TD
     
     Cache --> Redis[(Redis DB)]
     OM --> External[Open-Meteo API]
+    
+    CI[GitHub Actions] --> Lint[Ruff Linter]
+    CI --> Test[Pytest Suite]
+    CI --> Build[Docker Build]
 ```
 
-## Next Steps (Milestone 2)
-Focus will likely shift to:
-- **Security/Scalability**: Rate Limiting per Request ID or IP.
+## Next Steps (Milestone 3)
+Focus will shift to:
+- **Monitoring**: Metrics collection and observability improvements.

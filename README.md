@@ -101,6 +101,15 @@ curl "http://localhost:8000/health"
 Run the verification suite to ensure everything is working:
 
 ```bash
+# Run Test Suite
+uv run pytest -v
+
+# Run Linter
+uv run ruff check .
+
+# Format Code
+uv run ruff format .
+
 # Verify Caching Performance
 uv run scripts/verify_caching.py
 
@@ -110,15 +119,28 @@ uv run scripts/verify_adapter.py
 
 For more details, see **[scripts/Verification.md](scripts/Verification.md)**.
 
+## 🔄 CI/CD
+
+Automated quality gates run on every push:
+- **Linting**: Ruff enforces code style and quality
+- **Testing**: Pytest with 7 unit and integration tests
+- **Docker Build**: Validates production image
+
+See [.github/workflows/ci.yml](.github/workflows/ci.yml) for pipeline configuration.
+
 ## 🛠 Tech Stack
 
 - **Language**: Python 3.12+
 - **Framework**: FastAPI
 - **HTTP Client**: HTTPX (Async)
 - **Caching**: Redis (Async)
+- **Resilience**: Circuit Breaker pattern
 - **Validation**: Pydantic v2
+- **Testing**: Pytest with async support
+- **Linting**: Ruff (fast Python linter)
 - **Observability**: Structured JSON logging, Request ID tracing
 
 ## 📌 Status
 
-**Milestone 1b (Caching)** is complete. See [docs/current_state.md](docs/current_state.md) for details.
+**Milestone 2 (CI/CD & Quality)** is complete. See [docs/current_state.md](docs/current_state.md) for details.
+
