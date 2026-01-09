@@ -96,6 +96,11 @@ curl -v "http://localhost:8000/weather?city=London" | json_pp
 curl "http://localhost:8000/health"
 ```
 
+### 3. Metrics (Prometheus)
+```bash
+curl "http://localhost:8000/metrics"
+```
+
 ## ✅ Verification
 
 Run the verification suite to ensure everything is working:
@@ -149,7 +154,7 @@ See [.github/workflows/ci.yml](.github/workflows/ci.yml) for pipeline configurat
 - **Validation**: Pydantic v2
 - **Testing**: Pytest with async support
 - **Linting**: Ruff (fast Python linter)
-- **Observability**: Structured JSON logging, Request ID tracing
+- **Observability**: Structured JSON logging, Request ID tracing, Prometheus Metrics
 - **Deployment**: Graceful shutdown with SIGTERM/SIGINT handling for zero-downtime deployments
 
 ## 📌 Status

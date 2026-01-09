@@ -4,6 +4,7 @@ import signal
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from api.middleware import RequestLoggingMiddleware, TraceIdMiddleware
 from api.v1.schemas import ForecastItem, WeatherResponse
@@ -48,6 +49,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Weather Proxy", lifespan=lifespan)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(TraceIdMiddleware)
+
+
+# Instrument the app to collect metrics
+instrumentator = Instrumentator().instrument(app)
+# Expose the /metrics endpoint
+instrumentator.expose(app)
 
 
 @app.get("/health")
