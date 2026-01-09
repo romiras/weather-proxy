@@ -143,4 +143,3 @@ See [.github/workflows/ci.yml](.github/workflows/ci.yml) for pipeline configurat
 ## 📌 Status
 
 **Milestone 2 (CI/CD & Quality)** is complete. See [docs/current_state.md](docs/current_state.md) for details.
-
