@@ -1,11 +1,13 @@
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
+import json
+import logging
 import time
 import uuid
-import logging
-import json
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 logger = logging.getLogger("api.middleware")
+
 
 class TraceIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -15,24 +17,25 @@ class TraceIdMiddleware(BaseHTTPMiddleware):
         response.headers["X-Request-ID"] = request_id
         return response
 
+
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start_time = time.time()
-        
+
         try:
             response = await call_next(request)
             process_time = (time.time() - start_time) * 1000
-            
+
             log_data = {
                 "message": "Request processed",
                 "path": request.url.path,
                 "method": request.method,
                 "status_code": response.status_code,
                 "duration_ms": round(process_time, 2),
-                "request_id": getattr(request.state, "request_id", None)
+                "request_id": getattr(request.state, "request_id", None),
             }
             logger.info(json.dumps(log_data))
-            
+
             return response
         except Exception as e:
             process_time = (time.time() - start_time) * 1000
@@ -42,7 +45,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 "method": request.method,
                 "duration_ms": round(process_time, 2),
                 "request_id": getattr(request.state, "request_id", None),
-                "error": str(e)
+                "error": str(e),
             }
             logger.error(json.dumps(log_data))
             raise e

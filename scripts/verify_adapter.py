@@ -5,13 +5,14 @@ from pathlib import Path
 # Add project root to sys.path to allow imports from core/infra/api
 sys.path.append(str(Path(__file__).parent.parent))
 
-from infra.open_meteo import OpenMeteoProvider
 from core.domain.exceptions import CityNotFound
+from infra.open_meteo import OpenMeteoProvider
+
 
 async def verify_provider():
     print("--- Verifying OpenMeteoProvider ---")
     provider = OpenMeteoProvider()
-    
+
     # Test 1: Valid City
     try:
         city = "Paris"
@@ -33,6 +34,7 @@ async def verify_provider():
         print(f"✅ Correctly caught CityNotFound for {city}")
     except Exception as e:
         print(f"❌ Wrong exception type for {city}: {type(e)}")
+
 
 if __name__ == "__main__":
     asyncio.run(verify_provider())

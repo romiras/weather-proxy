@@ -1,13 +1,15 @@
 import json
 import logging
-from typing import Optional
-import redis.asyncio as redis
-from circuitbreaker import circuit, CircuitBreakerError
-from core.domain.ports import CachePort
-from core.domain.models import WeatherEntity
 from dataclasses import asdict
 
+import redis.asyncio as redis
+from circuitbreaker import CircuitBreakerError, circuit
+
+from core.domain.models import WeatherEntity
+from core.domain.ports import CachePort
+
 logger = logging.getLogger(__name__)
+
 
 class RedisCacheAdapter(CachePort):
     def __init__(self, redis_url: str):
@@ -15,7 +17,7 @@ class RedisCacheAdapter(CachePort):
         self.ttl = 3600  # 1 hour
 
     @circuit(failure_threshold=3, recovery_timeout=30)
-    async def _get_weather_impl(self, city_name: str) -> Optional[WeatherEntity]:
+    async def _get_weather_impl(self, city_name: str) -> WeatherEntity | None:
         key = f"weather:{city_name.lower()}"
         data = await self.redis.get(key)
         if data:
@@ -25,7 +27,7 @@ class RedisCacheAdapter(CachePort):
         logger.info(f"Cache MISS for {city_name}")
         return None
 
-    async def get_weather(self, city_name: str) -> Optional[WeatherEntity]:
+    async def get_weather(self, city_name: str) -> WeatherEntity | None:
         try:
             return await self._get_weather_impl(city_name)
         except CircuitBreakerError:

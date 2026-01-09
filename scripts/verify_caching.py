@@ -1,14 +1,16 @@
 import asyncio
-import time
+import os
 import sys
+import time
+
 import httpx
 from termcolor import cprint
-import os
 
 # Ensure we can import from the project root
 sys.path.append(os.getcwd())
 
 BASE_URL = "http://localhost:8000"
+
 
 async def test_caching():
     city = "London"
@@ -23,12 +25,12 @@ async def test_caching():
         cprint("1. Sending First Request (Cold)...", "cyan")
         resp1 = await client.get(url, params=params)
         duration1 = time.time() - start
-        
+
         if resp1.status_code != 200:
             cprint(f"FAILED: First request failed with {resp1.status_code}", "red")
             cprint(resp1.text, "red")
             sys.exit(1)
-            
+
         cprint(f"   Success. Duration: {duration1:.3f}s", "green")
         data1 = resp1.json()
 
@@ -48,7 +50,7 @@ async def test_caching():
         # 3. Analysis
         cprint("\n--- Analysis ---", "yellow")
         if duration2 < duration1:
-            cprint(f"Performance Improvement: {duration1/duration2:.1f}x faster", "green")
+            cprint(f"Performance Improvement: {duration1 / duration2:.1f}x faster", "green")
         else:
             cprint("WARNING: Second request was not faster (Platform latency?)", "yellow")
 
@@ -57,6 +59,7 @@ async def test_caching():
         else:
             cprint("FAILED: Data mismatch between cache and live", "red")
             sys.exit(1)
+
 
 if __name__ == "__main__":
     try:
