@@ -1,0 +1,19 @@
+services:
+  # The web service for our FastAPI application
+  - type: web
+    name: weather-proxy
+    runtime: docker
+    plan: free # Use the free plan for the proxy
+    healthCheckPath: /health
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          name: weather-redis
+          type: redis
+          property: connectionString
+
+  # Redis instance for caching
+  - type: redis
+    name: weather-redis
+    plan: free # Use the free plan for Redis
+    ipAllowList: [] # Only allow internal connections

@@ -1,5 +1,7 @@
 # Weather Proxy Service
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
 A production-grade Weather Proxy API built with Python and FastAPI, following **Hexagonal Architecture (Ports and Adapters)**. This service acts as a resilient gateway to external providers (Open-Meteo), featuring caching and robust observability.
 
 ## 🏗 Architecture
