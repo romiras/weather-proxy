@@ -2,26 +2,39 @@ from fastapi import FastAPI, HTTPException, Query
 from contextlib import asynccontextmanager
 from core.domain.ports import WeatherProviderPort
 from core.domain.exceptions import CityNotFound
+from core.services import WeatherService
 from infra.open_meteo import OpenMeteoProvider
+from infra.cache import RedisCacheAdapter
 from infra.logging import setup_logging
 from api.v1.schemas import WeatherResponse, ForecastItem
 from api.middleware import TraceIdMiddleware, RequestLoggingMiddleware
 import logging
+import os
 
 # Setup Logging
 setup_logging()
 logger = logging.getLogger("api")
 
 # Application State (Dependency Injection)
-provider: WeatherProviderPort = None
+service: WeatherService = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global provider
+    global service
     logger.info("Starting Weather Proxy...")
+    
+    # Initialize Adapters
     provider = OpenMeteoProvider()
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    cache = RedisCacheAdapter(redis_url)
+    
+    # Initialize Service
+    service = WeatherService(provider=provider, cache=cache)
+    
     yield
     logger.info("Shutting down Weather Proxy...")
+    # Explicitly close redis connection if needed, though simple adapter doesn't expose close()
+    # In a real app we'd close the pool.
 
 app = FastAPI(title="Weather Proxy", lifespan=lifespan)
 app.add_middleware(RequestLoggingMiddleware)
@@ -34,7 +47,7 @@ async def health_check():
 @app.get("/weather", response_model=WeatherResponse)
 async def get_weather(city: str = Query(..., min_length=1)):
     try:
-        weather = await provider.get_weather(city)
+        weather = await service.get_weather(city)
         
         # Map Entity to response model
         hourly_mapped = [
