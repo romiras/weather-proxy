@@ -4,26 +4,26 @@ A production-grade Weather Proxy API built with Python and FastAPI, following **
 
 ## 🏗 Architecture
 
-The project mimics a clean architecture approach to ensure the system is vendor-agnostic and testable.
+The project follows a clean architecture approach to ensure the system is vendor-agnostic and testable.
 
-- **Core (Domain Layer)**: Contains pure business logic, data entities, and interface definitions (Ports). It has *zero* dependencies on frameworks or external APIs.
-- **API (Primary Adapter)**: The "Driving" side. Handles incoming HTTP requests via FastAPI and maps them to domain commands.
-- **Infra (Secondary Adapter)**: The "Driven" side. Implements the interfaces defined in the core to talk to external services (like Open-Meteo) or databases.
+- **Core (Domain Layer)**: Pure business logic and interfaces (`core/`). Zero external dependencies.
+- **API (Inbound Adapter)**: FastAPI web layer (`api/`).
+- **Infra (Outbound Adapter)**: External service integrations (`infra/`).
+
+> 📖 **[Read the full Architecture Documentation](docs/architecture.md)**
 
 ## 📂 Project Structure
 
 ```
 weather-proxy/
-├── api/            # Inbound Adapters (FastAPI)
-│   └── v1/         # Versioned API Schemas & Routes
-├── core/           # The Hexagon (Business Logic)
-│   ├── domain/     # Entities & Ports (Interfaces)
-│   └── use_cases/  # Application Logic (Interactors)
-├── infra/          # Outbound Adapters
-│   └── logging.py  # Infrastructure concerns
-├── docs/           # Documentation & Specifications
-├── pyproject.toml  # Project Dependencies
-└── README.md
+├── api/            # Inbound Adapters (FastAPI, Middleware)
+├── core/           # The Hexagon (Domain Entities, Ports, Exceptions)
+├── infra/          # Outbound Adapters (Open-Meteo, Logging)
+├── scripts/        # Verification and utility scripts
+├── docs/           # Specifications & Architecture docs
+├── Dockerfile      # Production container definition
+├── main.py         # Application entrypoint & wiring
+└── pyproject.toml  # Dependencies
 ```
 
 ## 🚀 Getting Started
@@ -31,46 +31,64 @@ weather-proxy/
 ### Prerequisites
 
 - **Python 3.12+**
-- **uv** (recommended for package management) or standard `pip`.
+- **uv** (recommended) or `pip`.
 
-### Installation
+### API Usage
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <repo-url>
-    cd weather-proxy
-    ```
-
-2.  **Install dependencies:**
-    Using `uv`:
-    ```bash
-    uv pip install -r pyproject.toml
-    # OR if you just want to sync
-    uv sync
-    ```
-    
-    Using `pip`:
-    ```bash
-    pip install .
-    ```
-
-### Running the Project
-
-*Note: The application is currently in the **Skeleton Phase** (Milestone 1). The web server is ready to be implemented.*
-
-To verify the setup and environment:
+#### 1. Run Locally
+Start the server with hot-reload enabled:
 ```bash
-python3 -c "import core.domain.models; print('Domain layer is accessible')"
+uv run uvicorn main:app --reload
 ```
+
+### API Usage
+
+Once the server is running, you can interact with it using `curl` or any HTTP client.
+
+#### 1. Get Weather for a City
+Fetch the current weather and hourly forecast for a specific city.
+```bash
+curl -v "http://localhost:8000/weather?city=London" | json_pp
+```
+**Response Preview:**
+```json
+{
+  "city_name": "London",
+  "current_temperature": 15.2,
+  "current_humidity": 60,
+  "hourly_forecast": [
+    { "time": "2023-10-27T10:00", "temperature": 15.5 },
+    ...
+  ]
+}
+```
+
+#### 2. Health Check
+Verify the service is up and running.
+```bash
+curl "http://localhost:8000/health"
+```
+
+#### 3. Error Handling
+Try requesting a non-existent city to see the error handling.
+```bash
+curl -v "http://localhost:8000/weather?city=Bu-Ga-Gu"
+```
+*Returns `404 Not Found` with `{"detail": "City 'Bu-Ga-Gu' not found."}`*
+
+## ✅ Verification
+
+For detailed instructions on how to verify the application using the included scripts, please refer to **[scripts/Verification.md](scripts/Verification.md)**.
+
 
 ## 🛠 Tech Stack
 
 - **Language**: Python 3.12+
-- **Web Framework**: FastAPI
+- **Framework**: FastAPI
 - **HTTP Client**: HTTPX (Async)
 - **Validation**: Pydantic v2
-- **Logging**: Structured JSON logging
+- **Observability**: Structured JSON logging, Request ID tracing
 
 ## 📌 Current Status
 
-See [docs/current_state.md](docs/current_state.md) for a detailed breakdown of the implemented components and next steps.
+See [docs/current_state.md](docs/current_state.md) for a detailed report on Milestone 1 completion.
