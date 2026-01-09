@@ -1,6 +1,6 @@
 # Weather Proxy Service
 
-A production-grade Weather Proxy API built with Python and FastAPI, following **Hexagonal Architecture (Ports and Adapters)**. This service mimics a backend environment where business logic is strictly decoupled from external providers (Open-Meteo).
+A production-grade Weather Proxy API built with Python and FastAPI, following **Hexagonal Architecture (Ports and Adapters)**. This service acts as a resilient gateway to external providers (Open-Meteo), featuring caching and robust observability.
 
 ## 🏗 Architecture
 
@@ -8,7 +8,7 @@ The project follows a clean architecture approach to ensure the system is vendor
 
 - **Core (Domain Layer)**: Pure business logic and interfaces (`core/`). Zero external dependencies.
 - **API (Inbound Adapter)**: FastAPI web layer (`api/`).
-- **Infra (Outbound Adapter)**: External service integrations (`infra/`).
+- **Infra (Outbound Adapter)**: External service integrations (Open-Meteo, Redis, Logging).
 
 > 📖 **[Read the full Architecture Documentation](docs/architecture.md)**
 
@@ -18,10 +18,11 @@ The project follows a clean architecture approach to ensure the system is vendor
 weather-proxy/
 ├── api/            # Inbound Adapters (FastAPI, Middleware)
 ├── core/           # The Hexagon (Domain Entities, Ports, Exceptions)
-├── infra/          # Outbound Adapters (Open-Meteo, Logging)
+├── infra/          # Outbound Adapters (Open-Meteo, Redis, Logging)
 ├── scripts/        # Verification and utility scripts
 ├── docs/           # Specifications & Architecture docs
 ├── Dockerfile      # Production container definition
+├── docker-compose.yml # Local development stack
 ├── main.py         # Application entrypoint & wiring
 └── pyproject.toml  # Dependencies
 ```
@@ -32,25 +33,52 @@ weather-proxy/
 
 - **Python 3.12+**
 - **uv** (recommended) or `pip`.
+- **Redis 7+** (Required for caching).
 
-### API Usage
+### Development Setup
 
-#### 1. Run Locally
+#### 1. Configuration
+Copy the host configuration example to `.env`:
+```bash
+cp .env.host.example .env
+```
+Ensure your locally running Redis matches the `REDIS_URL`.
+
+#### 2. Run Redis (Docker)
+If you don't have Redis installed, start it via Docker:
+```bash
+docker run --name weather-redis -d -p 6379:6379 redis:7-alpine
+```
+
+#### 3. Run Application
 Start the server with hot-reload enabled:
 ```bash
 uv run uvicorn main:app --reload
 ```
 
-### API Usage
+### 🐳 Docker Compose Setup (Recommended)
+You can run the full stack (App + Redis) with one command.
 
-Once the server is running, you can interact with it using `curl` or any HTTP client.
+1. Configure environment:
+   ```bash
+   cp .env.docker.example .env
+   ```
+2. Start services:
+   ```bash
+   docker compose up --build
+   ```
 
-#### 1. Get Weather for a City
-Fetch the current weather and hourly forecast for a specific city.
+## 🔌 API Usage
+
+After starting the server (default: `http://localhost:8000`), you can interact with it.
+
+### 1. Get Weather (Cached)
+Fetch weather data. Second request to the same city will be **Instant (<1ms)** due to Redis caching.
 ```bash
 curl -v "http://localhost:8000/weather?city=London" | json_pp
 ```
-**Response Preview:**
+
+**Response:**
 ```json
 {
   "city_name": "London",
@@ -63,32 +91,34 @@ curl -v "http://localhost:8000/weather?city=London" | json_pp
 }
 ```
 
-#### 2. Health Check
-Verify the service is up and running.
+### 2. Health Check
 ```bash
 curl "http://localhost:8000/health"
 ```
 
-#### 3. Error Handling
-Try requesting a non-existent city to see the error handling.
-```bash
-curl -v "http://localhost:8000/weather?city=Bu-Ga-Gu"
-```
-*Returns `404 Not Found` with `{"detail": "City 'Bu-Ga-Gu' not found."}`*
-
 ## ✅ Verification
 
-For detailed instructions on how to verify the application using the included scripts, please refer to **[scripts/Verification.md](scripts/Verification.md)**.
+Run the verification suite to ensure everything is working:
 
+```bash
+# Verify Caching Performance
+uv run scripts/verify_caching.py
+
+# Verify Provider Integration
+uv run scripts/verify_adapter.py
+```
+
+For more details, see **[scripts/Verification.md](scripts/Verification.md)**.
 
 ## 🛠 Tech Stack
 
 - **Language**: Python 3.12+
 - **Framework**: FastAPI
 - **HTTP Client**: HTTPX (Async)
+- **Caching**: Redis (Async)
 - **Validation**: Pydantic v2
 - **Observability**: Structured JSON logging, Request ID tracing
 
-## 📌 Current Status
+## 📌 Status
 
-See [docs/current_state.md](docs/current_state.md) for a detailed report on Milestone 1 completion.
+**Milestone 1b (Caching)** is complete. See [docs/current_state.md](docs/current_state.md) for details.
