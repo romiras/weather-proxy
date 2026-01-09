@@ -85,6 +85,7 @@ async def get_weather(city: str = Query(..., min_length=1)):
 
 def setup_signal_handlers():
     """Setup signal handlers for graceful shutdown."""
+
     def handle_signal(signum, frame):
         signame = signal.Signals(signum).name
         logger.info(f"Received signal {signame} ({signum}), initiating graceful shutdown...")
@@ -109,4 +110,3 @@ if __name__ == "__main__":
         port=8000,
         log_config=None,  # Use our custom logging setup
     )
-

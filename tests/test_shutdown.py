@@ -1,6 +1,5 @@
 """Tests for graceful shutdown behavior."""
 
-
 import pytest
 
 from infra.cache import RedisCacheAdapter
